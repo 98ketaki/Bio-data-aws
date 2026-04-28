@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BIO-DATA-QC</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Fira+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:         #04090F;
+      --surface:    #0A1421;
+      --surface2:   #0F1C2E;
+      --border:     #172740;
+      --border2:    #1E3A5F;
+      --blue:       #2563EB;
+      --blue-mid:   #3B82F6;
+      --blue-light: #60A5FA;
+      --blue-glow:  rgba(37,99,235,0.25);
+      --amber:      #F59E0B;
+      --amber-dim:  rgba(245,158,11,0.12);
+      --red:        #EF4444;
+      --red-dim:    rgba(239,68,68,0.1);
+      --red-light:  #FCA5A5;
+      --green:      #10B981;
+      --purple:     #7C3AED;
+      --text:       #E2E8F0;
+      --muted:      #94A3B8;
+      --dim:        #475569;
+      --dimmer:     #2D3F55;
+    }
+
+    html, body {
+      width: 100%; height: 100%;
+      overflow: hidden;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Fira Sans', sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── BACKGROUND ── */
+    #bg {
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    }
+    #bg::before {
+      content: '';
+      position: absolute; inset: 0;
+      background:
+        radial-gradient(ellipse 55% 55% at 15% 25%, rgba(37,99,235,0.13) 0%, transparent 65%),
+        radial-gradient(ellipse 45% 40% at 85% 75%, rgba(16,185,129,0.06) 0%, transparent 65%),
+        radial-gradient(ellipse 30% 30% at 50% 50%, rgba(37,99,235,0.05) 0%, transparent 60%);
+    }
+    #bg::after {
+      content: '';
+      position: absolute; inset: 0;
+      background-image:
+        linear-gradient(rgba(23,39,64,0.6) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(23,39,64,0.6) 1px, transparent 1px);
+      background-size: 56px 56px;
+      mask-image: radial-gradient(ellipse 75% 75% at 50% 50%, black 30%, transparent 75%);
+    }
+
+    /* ── PROGRESS BAR ── */
+    #progress {
+      position: fixed; top: 0; left: 0;
+      height: 2px;
+      background: linear-gradient(90deg, var(--blue), var(--blue-light));
+      box-shadow: 0 0 10px var(--blue-glow);
+      transition: width 0.45s cubic-bezier(0.4,0,0.2,1);
+      z-index: 200;
+    }
+
+    /* ── COUNTER ── */
+    #counter {
+      position: fixed; top: 24px; right: 40px;
+      font-family: 'Fira Code', monospace;
+      font-size: 11px; letter-spacing: 0.12em;
+      color: var(--dim); z-index: 200;
+    }
+    #counter em { color: var(--muted); font-style: normal; }
+
+    /* ── SLIDES ── */
+    #deck {
+      position: relative; width: 100vw; height: 100vh; z-index: 1;
+    }
+
+    .slide {
+      position: absolute; inset: 0;
+      display: flex; flex-direction: column;
+      padding: 56px 80px 100px;
+      opacity: 0; pointer-events: none;
+      transition: none;
+    }
+    .slide.active {
+      opacity: 1; pointer-events: auto;
+    }
+    .slide.enter-fwd  { animation: enterFwd  0.42s cubic-bezier(0.4,0,0.2,1) forwards; }
+    .slide.enter-back { animation: enterBack 0.42s cubic-bezier(0.4,0,0.2,1) forwards; }
+    .slide.leave-fwd  { animation: leaveFwd  0.42s cubic-bezier(0.4,0,0.2,1) forwards; }
+    .slide.leave-back { animation: leaveBack 0.42s cubic-bezier(0.4,0,0.2,1) forwards; }
+
+    @keyframes enterFwd  { from { opacity:0; transform:translateX(48px);  } to { opacity:1; transform:none; } }
+    @keyframes enterBack { from { opacity:0; transform:translateX(-48px); } to { opacity:1; transform:none; } }
+    @keyframes leaveFwd  { from { opacity:1; transform:none; } to { opacity:0; transform:translateX(-40px); } }
+    @keyframes leaveBack { from { opacity:1; transform:none; } to { opacity:0; transform:translateX(40px);  } }
+
+    /* ── SLIDE LABEL (top-left tag) ── */
+    .s-tag {
+      font-family: 'Fira Code', monospace;
+      font-size: 10px; font-weight: 500;
+      letter-spacing: 0.25em; text-transform: uppercase;
+      color: var(--blue-light);
+      margin-bottom: 0;
+      opacity: 0;
+    }
+    .slide.active .s-tag {
+      animation: fadeUp 0.35s 0.1s cubic-bezier(0.4,0,0.2,1) forwards;
+    }
+
+    /* ── BODY CONTENT ── */
+    .s-body {
+      flex: 1; display: flex; flex-direction: column;
+      justify-content: center;
+    }
+
+    /* ── TYPOGRAPHY ── */
+    .t-giant {
+      font-family: 'Fira Code', monospace;
+      font-size: clamp(52px, 7.5vw, 100px);
+      font-weight: 700; line-height: 1;
+      letter-spacing: -0.025em; color: #fff;
+      text-shadow: 0 0 80px rgba(96,165,250,0.35);
+    }
+    .t-headline {
+      font-family: 'Fira Code', monospace;
+      font-size: clamp(26px, 3.6vw, 44px);
+      font-weight: 600; line-height: 1.2; color: var(--text);
+    }
+    .t-section {
+      font-family: 'Fira Code', monospace;
+      font-size: 11px; font-weight: 600;
+      letter-spacing: 0.25em; text-transform: uppercase;
+      color: var(--blue-light);
+    }
+    .t-body {
+      font-size: 17px; font-weight: 400;
+      line-height: 1.75; color: var(--muted);
+      max-width: 680px;
+    }
+    .t-mono { font-family: 'Fira Code', monospace; }
+
+    /* ── DIVIDER ── */
+    .rule {
+      width: 36px; height: 2px;
+      background: var(--blue); border-radius: 1px;
+      margin: 22px 0;
+    }
+
+    /* ── FADE-UP STAGGER ── */
+    .fu { opacity: 0; }
+    .slide.active .fu { animation: fadeUp 0.4s cubic-bezier(0.4,0,0.2,1) forwards; }
+    .slide.active .fu:nth-child(1) { animation-delay: 0.15s; }
+    .slide.active .fu:nth-child(2) { animation-delay: 0.23s; }
+    .slide.active .fu:nth-child(3) { animation-delay: 0.31s; }
+    .slide.active .fu:nth-child(4) { animation-delay: 0.39s; }
+    .slide.active .fu:nth-child(5) { animation-delay: 0.47s; }
+    .slide.active .fu:nth-child(6) { animation-delay: 0.55s; }
+    @keyframes fadeUp {
+      from { opacity:0; transform:translateY(14px); }
+      to   { opacity:1; transform:none; }
+    }
+
+    /* ── BULLET LIST ── */
+    .blist { list-style: none; display: flex; flex-direction: column; gap: 16px; }
+    .blist li {
+      display: flex; align-items: flex-start; gap: 14px;
+      font-size: 17px; line-height: 1.65; color: var(--muted);
+      opacity: 0;
+    }
+    .slide.active .blist li { animation: fadeUp 0.4s cubic-bezier(0.4,0,0.2,1) forwards; }
+    .slide.active .blist li:nth-child(1) { animation-delay: 0.22s; }
+    .slide.active .blist li:nth-child(2) { animation-delay: 0.32s; }
+    .slide.active .blist li:nth-child(3) { animation-delay: 0.42s; }
+    .slide.active .blist li:nth-child(4) { animation-delay: 0.52s; }
+    .slide.active .blist li:nth-child(5) { animation-delay: 0.62s; }
+    .blist li::before {
+      content: '—';
+      font-family: 'Fira Code', monospace;
+      font-size: 13px; color: var(--blue-mid);
+      flex-shrink: 0; margin-top: 3px;
+    }
+    .blist li b { color: var(--text); font-weight: 600; }
+    .blist li.warn { color: var(--red-light); }
+    .blist li.warn::before { color: var(--red); }
+    .blist li.warn b { color: var(--red-light); }
+
+    /* ── CALLOUT BOXES ── */
+    .callout {
+      border-radius: 0 10px 10px 0;
+      padding: 20px 24px;
+      margin-bottom: 36px;
+    }
+    .callout-red {
+      background: var(--red-dim);
+      border-left: 3px solid var(--red);
+    }
+    .callout-red p {
+      font-size: 19px; font-weight: 600;
+      color: var(--red-light); line-height: 1.5;
+    }
+    .callout-amber {
+      background: var(--amber-dim);
+      border-left: 3px solid var(--amber);
+    }
+    .callout-amber p {
+      font-family: 'Fira Code', monospace;
+      font-size: 20px; font-weight: 700;
+      color: var(--amber); line-height: 1.5;
+      letter-spacing: 0.01em;
+    }
+
+    /* ── CARD ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border2);
+      border-radius: 12px;
+      padding: 22px 26px;
+      position: relative; overflow: hidden;
+    }
+    .card::before {
+      content: '';
+      position: absolute; inset: 0;
+      background: linear-gradient(135deg, rgba(37,99,235,0.06) 0%, transparent 55%);
+      pointer-events: none;
+    }
+    .card-tag {
+      font-family: 'Fira Code', monospace;
+      font-size: 9px; font-weight: 600;
+      letter-spacing: 0.3em; text-transform: uppercase;
+      color: var(--blue-light); margin-bottom: 10px;
+    }
+    .card p { font-size: 16px; line-height: 1.65; color: var(--muted); }
+    .card p b { color: var(--text); font-weight: 600; }
+
+    /* ── STAT HERO ── */
+    .stat-num {
+      font-family: 'Fira Code', monospace;
+      font-size: clamp(72px, 11vw, 128px);
+      font-weight: 700; line-height: 1;
+      letter-spacing: -0.04em;
+      color: var(--amber);
+      text-shadow: 0 0 60px rgba(245,158,11,0.3);
+    }
+    .stat-caption {
+      font-size: 15px; color: var(--dim);
+      margin-top: 6px; margin-bottom: 28px;
+    }
+
+    /* ── CUSTOMER GRID ── */
+    .cgrid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px; max-width: 580px;
+    }
+    .ccard {
+      background: var(--surface);
+      border: 1px solid var(--border2);
+      border-radius: 12px; padding: 20px 22px;
+      cursor: default;
+      transition: border-color 0.2s, background 0.2s;
+      opacity: 0;
+    }
+    .ccard:hover {
+      border-color: var(--blue-mid);
+      background: var(--surface2);
+    }
+    .slide.active .ccard { animation: fadeUp 0.4s cubic-bezier(0.4,0,0.2,1) forwards; }
+    .slide.active .ccard:nth-child(1) { animation-delay: 0.2s; }
+    .slide.active .ccard:nth-child(2) { animation-delay: 0.3s; }
+    .slide.active .ccard:nth-child(3) { animation-delay: 0.4s; }
+    .slide.active .ccard:nth-child(4) { animation-delay: 0.5s; }
+    .cicon {
+      width: 34px; height: 34px; border-radius: 8px;
+      background: rgba(37,99,235,0.15);
+      border: 1px solid rgba(96,165,250,0.25);
+      display: flex; align-items: center; justify-content: center;
+      margin-bottom: 12px;
+    }
+    .cicon svg {
+      width: 17px; height: 17px;
+      stroke: var(--blue-light); fill: none; stroke-width: 1.5;
+      stroke-linecap: round; stroke-linejoin: round;
+    }
+    .ccard p { font-size: 14px; font-weight: 500; color: var(--text); line-height: 1.4; }
+
+    /* ── DEMO CODE BLOCK ── */
+    .code-block {
+      background: var(--surface);
+      border: 1px solid var(--border2);
+      border-radius: 12px;
+      padding: 20px 24px 20px;
+      margin-top: 22px;
+      position: relative;
+    }
+    .code-block::before {
+      content: 'python';
+      position: absolute; top: 13px; right: 18px;
+      font-family: 'Fira Code', monospace;
+      font-size: 9px; letter-spacing: 0.15em;
+      color: var(--dimmer); text-transform: uppercase;
+    }
+    .code-block code {
+      font-family: 'Fira Code', monospace;
+      font-size: 14px; line-height: 2;
+      color: var(--green); display: block;
+    }
+    .kw  { color: var(--blue-light); }
+    .cm  { color: var(--dim); }
+    .str { color: var(--amber); }
+    .fn  { color: #fff; }
+
+    /* ── LINKS ── */
+    .ref-link {
+      font-family: 'Fira Code', monospace;
+      font-size: 13px; color: var(--blue-light);
+      text-decoration: none;
+      border-bottom: 1px solid transparent;
+      padding-bottom: 1px;
+      transition: border-color 0.2s, color 0.2s;
+      cursor: pointer;
+      width: fit-content;
+    }
+    .ref-link:hover { color: #fff; border-bottom-color: #fff; }
+    .ref-link:focus-visible {
+      outline: 2px solid var(--blue-light);
+      outline-offset: 3px; border-radius: 2px;
+    }
+    .links-stack { display: flex; flex-direction: column; gap: 10px; margin-top: 28px; }
+    .links-stack .ref-link::before { content: '→  '; }
+
+    /* ── AVATAR ── */
+    .avatar {
+      width: 46px; height: 46px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--purple), var(--blue));
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'Fira Code', monospace;
+      font-size: 18px; font-weight: 700; color: #fff;
+      box-shadow: 0 0 24px rgba(124,58,237,0.4);
+      margin-top: 28px;
+    }
+
+    /* ── SMALL NOTE ── */
+    .note {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px 18px;
+      margin-top: 20px;
+    }
+    .note p {
+      font-size: 13px; color: var(--dim);
+      line-height: 1.6; font-style: italic;
+    }
+
+    /* ── NAV ── */
+    .nav {
+      position: fixed; bottom: 36px; left: 50%;
+      transform: translateX(-50%);
+      display: flex; align-items: center; gap: 18px;
+      z-index: 200;
+    }
+    .nav-btn {
+      width: 42px; height: 42px; border-radius: 50%;
+      background: var(--surface);
+      border: 1px solid var(--border2);
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; color: var(--muted);
+      transition: background 0.2s, border-color 0.2s, color 0.2s;
+    }
+    .nav-btn:hover { background: var(--surface2); border-color: var(--blue); color: var(--text); }
+    .nav-btn:focus-visible { outline: 2px solid var(--blue-light); outline-offset: 3px; }
+    .nav-btn svg {
+      width: 17px; height: 17px;
+      stroke: currentColor; fill: none; stroke-width: 2;
+      stroke-linecap: round; stroke-linejoin: round;
+    }
+    .dots { display: flex; gap: 7px; align-items: center; }
+    .dot {
+      width: 5px; height: 5px; border-radius: 50%;
+      background: var(--dimmer); cursor: pointer;
+      transition: background 0.2s, transform 0.2s, width 0.2s;
+    }
+    .dot.on { background: var(--blue-light); transform: scale(1.5); }
+    .dot:focus-visible { outline: 2px solid var(--blue-light); outline-offset: 3px; border-radius: 2px; }
+
+    /* ── SLIDE 1 SPECIFICS ── */
+    #s1 { align-items: center; justify-content: center; padding-bottom: 56px; }
+    .bracket-wrap {
+      position: relative;
+      display: inline-block; padding: 44px 64px;
+      text-align: center;
+    }
+    .bracket-wrap::before, .bracket-wrap::after {
+      content: ''; position: absolute;
+      width: 28px; height: 28px;
+      border-color: var(--blue); border-style: solid;
+    }
+    .bracket-wrap::before { top:0; left:0; border-width:2px 0 0 2px; }
+    .bracket-wrap::after  { bottom:0; right:0; border-width:0 2px 2px 0; }
+    .s1-sub {
+      font-size: 18px; font-weight: 300;
+      color: var(--muted); margin-top: 14px;
+      letter-spacing: 0.04em;
+    }
+    .s1-corner {
+      position: absolute; top: 24px; left: 80px;
+      font-family: 'Fira Code', monospace;
+      font-size: 10px; color: var(--dimmer);
+      letter-spacing: 0.18em; text-transform: uppercase;
+    }
+
+    /* ── REDUCED MOTION ── */
+    @media (prefers-reduced-motion: reduce) {
+      .slide, .fu, .blist li, .ccard, .s-tag,
+      .slide.enter-fwd, .slide.enter-back,
+      .slide.leave-fwd, .slide.leave-back { animation: none !important; transition: none !important; }
+      .slide.active .fu,
+      .slide.active .blist li,
+      .slide.active .ccard { opacity: 1; transform: none; }
+      .slide.active .s-tag { opacity: 1; }
+    }
+
+    /* ── HELPERS ── */
+    .mt8  { margin-top: 8px; }
+    .mt16 { margin-top: 16px; }
+    .mt24 { margin-top: 24px; }
+    .mt32 { margin-top: 32px; }
+    .gap20 { display: flex; flex-direction: column; gap: 20px; }
+    .max680 { max-width: 680px; }
+    .max760 { max-width: 760px; }
+  </style>
+</head>
+<body>
+
+  <div id="bg" aria-hidden="true"></div>
+  <div id="progress" role="progressbar" aria-valuemin="1" aria-valuemax="9" aria-valuenow="1"></div>
+  <div id="counter" aria-live="polite"><em>01</em> / 05</div>
+
+  <main id="deck" aria-label="Slide deck">
+
+    <!-- ───── SLIDE 1 ───── -->
+    <section class="slide active" id="s1" data-i="0" aria-label="Slide 1: Title">
+      <p class="s1-corner">BIO-DATA-QC // v0.1</p>
+      <div class="bracket-wrap">
+        <h1 class="t-giant">BIO-DATA-QC</h1>
+        <p class="s1-sub">Your models deserve better data</p>
+      </div>
+    </section>
+
+    <!-- ───── SLIDE 2 ───── -->
+    <section class="slide" data-i="1" aria-label="Slide 2: Problem">
+      <p class="s-tag">02 — Problem</p>
+      <div class="s-body max760">
+        <div class="callout callout-red fu">
+          <p>The number one reason AI pilots fail in biotech is data quality</p>
+        </div>
+        <ul class="blist">
+          <li>Computational biologists spend up to <b>45% of their time preparing data</b></li>
+          <li>Critical biological context lives outside structured systems — in <b>protocols, notes, etc.</b></li>
+          <li>Models are <b>training on it anyway</b></li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ───── SLIDE 3 ───── -->
+    <section class="slide" data-i="2" aria-label="Slide 3: Why existing tools fail">
+      <p class="s-tag">03 — Landscape</p>
+      <div class="s-body max760">
+        <h2 class="t-headline fu">Why existing tools fail</h2>
+        <div class="rule fu"></div>
+        <ul class="blist">
+          <li>Electronic Lab Notebooks (ELNs) capture experiments for Lab Scientists: <b>Benchling, Tetra</b></li>
+          <li>Lab Information Systems (LIMS) Are <b>Siloed and Inflexible</b></li>
+          <li>Databases store outputs but are <b>not accessible by Lab scientists</b></li>
+          <li>Validators check schemas but none of them reason about whether the data is <b>scientifically meaningful</b></li>
+          <li class="warn"><b>No Standardization Enforcement</b></li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ───── SLIDE 4 ───── -->
+    <section class="slide" data-i="3" aria-label="Slide 4: Solution">
+      <p class="s-tag">04 — Solution</p>
+      <div class="s-body max760">
+        <div class="callout callout-amber fu">
+          <p>BIO-DATA-QC IS A QUALITY AWARE FEATURE STORE</p>
+        </div>
+        <ul class="blist">
+          <li>QC score travels with every feature</li>
+          <li>Bad data is <b>quarantined</b> before it ever becomes a feature</li>
+          <li>Quality is <b>queryable</b>: filter by score, lot, batch, or instrument at query time</li>
+          <li>Schema is <b>versioned like code</b> — no silent mixing of old models and new data</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ───── SLIDE 5 ───── -->
+    <section class="slide" data-i="4" aria-label="Slide 5: Customers">
+      <p class="s-tag">05 — Customers</p>
+      <div class="s-body max680">
+        <h2 class="t-headline fu">Customers</h2>
+        <div class="rule fu"></div>
+        <ul class="blist">
+          <li>Computational Biologists / Bioinformaticians</li>
+          <li>ML/AI team at Biotech and Big Pharma</li>
+          <li>Contract Research Organizations (CROs) generating <b>schema-specific data</b> for each customer</li>
+        </ul>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Navigation -->
+  <nav class="nav" aria-label="Slide navigation">
+    <button class="nav-btn" id="prev" aria-label="Previous slide" title="Previous (←)">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="15,18 9,12 15,6"/></svg>
+    </button>
+    <div class="dots" id="dots" role="tablist" aria-label="Slides"></div>
+    <button class="nav-btn" id="next" aria-label="Next slide" title="Next (→)">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="9,18 15,12 9,6"/></svg>
+    </button>
+  </nav>
+
+  <script>
+    const TOTAL = 5;
+    let cur = 0, busy = false;
+    const slides = document.querySelectorAll('.slide');
+    const prog   = document.getElementById('progress');
+    const ctr    = document.getElementById('counter');
+    const dotsEl = document.getElementById('dots');
+
+    // Build dots
+    for (let i = 0; i < TOTAL; i++) {
+      const d = document.createElement('button');
+      d.className = 'dot' + (i === 0 ? ' on' : '');
+      d.setAttribute('role', 'tab');
+      d.setAttribute('aria-label', `Slide ${i + 1}`);
+      d.setAttribute('aria-selected', i === 0 ? 'true' : 'false');
+      d.addEventListener('click', () => go(i));
+      dotsEl.appendChild(d);
+    }
+
+    function refresh() {
+      const pct = ((cur + 1) / TOTAL) * 100;
+      prog.style.width = pct + '%';
+      prog.setAttribute('aria-valuenow', cur + 1);
+      const n = String(cur + 1).padStart(2, '0');
+      ctr.innerHTML = `<em>${n}</em> / 05`;
+      dotsEl.querySelectorAll('.dot').forEach((d, i) => {
+        d.classList.toggle('on', i === cur);
+        d.setAttribute('aria-selected', i === cur ? 'true' : 'false');
+      });
+    }
+
+    function go(idx) {
+      if (idx === cur || busy) return;
+      busy = true;
+      const fwd = idx > cur;
+      const from = slides[cur];
+      const to   = slides[idx];
+
+      from.classList.add(fwd ? 'leave-fwd' : 'leave-back');
+      from.classList.remove('active');
+
+      // Position incoming before animating
+      to.style.opacity = '0';
+      to.classList.add('active');
+      requestAnimationFrame(() => {
+        to.style.opacity = '';
+        to.classList.add(fwd ? 'enter-fwd' : 'enter-back');
+      });
+
+      cur = idx;
+      refresh();
+
+      setTimeout(() => {
+        from.classList.remove('leave-fwd', 'leave-back');
+        to.classList.remove('enter-fwd', 'enter-back');
+        busy = false;
+      }, 440);
+    }
+
+    document.getElementById('next').addEventListener('click', () => { if (cur < TOTAL-1) go(cur+1); });
+    document.getElementById('prev').addEventListener('click', () => { if (cur > 0) go(cur-1); });
+
+    document.addEventListener('keydown', e => {
+      if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') {
+        e.preventDefault(); if (cur < TOTAL-1) go(cur+1);
+      } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+        e.preventDefault(); if (cur > 0) go(cur-1);
+      }
+    });
+
+    // Touch swipe
+    let tx = 0;
+    document.addEventListener('touchstart', e => { tx = e.touches[0].clientX; }, { passive: true });
+    document.addEventListener('touchend', e => {
+      const dx = tx - e.changedTouches[0].clientX;
+      if (Math.abs(dx) > 48) {
+        if (dx > 0 && cur < TOTAL-1) go(cur+1);
+        else if (dx < 0 && cur > 0) go(cur-1);
+      }
+    }, { passive: true });
+
+    refresh();
+  </script>
+</body>
+</html>
