@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "bouncer"
+version = "0.1.0"
+description = "Context-aware QC and feature registration for bioinformatics data"
+requires-python = ">=3.10"
+dependencies = [
+    "pandas>=2.0",
+    "numpy>=1.24",
+    "pyyaml>=6.0",
+    "anndata>=0.10",
+    "duckdb>=0.10",
+    "pypdf>=4.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["bouncer*"]

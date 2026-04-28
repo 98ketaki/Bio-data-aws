@@ -1,0 +1,11 @@
+Metadata-Version: 2.4
+Name: bouncer
+Version: 0.1.0
+Summary: Context-aware QC and feature registration for bioinformatics data
+Requires-Python: >=3.10
+Requires-Dist: pandas>=2.0
+Requires-Dist: numpy>=1.24
+Requires-Dist: pyyaml>=6.0
+Requires-Dist: anndata>=0.10
+Requires-Dist: duckdb>=0.10
+Requires-Dist: pypdf>=4.0
